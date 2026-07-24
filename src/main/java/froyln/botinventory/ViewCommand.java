@@ -34,6 +34,35 @@ public class ViewCommand {
         playerArgNode.addChild(viewNode);
     }
 
+    public static boolean isPlayerAllowed(ServerPlayerEntity player, String ruleValue) {
+        return switch (ruleValue) {
+            case "true" -> true;
+            case "false" -> false;
+            case "ops" -> player.getCommandSource().hasPermissionLevel(2);
+            default -> {
+                try {
+                    yield player.getCommandSource().hasPermissionLevel(Integer.parseInt(ruleValue));
+                } catch (NumberFormatException e) {
+                    yield false;
+                }
+            }
+        };
+    }
+
+    public static void openInventory(ServerPlayerEntity player, ServerPlayerEntity targetPlayer) {
+        SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
+        gui.setTitle(targetPlayer.getName());
+
+        var targetInv = targetPlayer.getInventory();
+        for (int i = 0; i < targetInv.size(); i++) {
+            int x = 8 + (i % 9) * 18;
+            int y = 18 + (i / 9) * 18;
+            gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
+        }
+
+        gui.open();
+    }
+
     private static boolean isViewAllowed(ServerCommandSource source, String ruleValue) {
         return switch (ruleValue) {
             case "true" -> true;
@@ -59,19 +88,7 @@ public class ViewCommand {
 
     private static int viewInventory(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
-        ServerPlayerEntity targetPlayer = getTargetPlayer(context);
-
-        SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
-        gui.setTitle(targetPlayer.getName());
-
-        var targetInv = targetPlayer.getInventory();
-        for (int i = 0; i < targetInv.size(); i++) {
-            int x = 8 + (i % 9) * 18;
-            int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
-        }
-
-        gui.open();
+        openInventory(player, getTargetPlayer(context));
         return 1;
     }
 

@@ -36,10 +36,13 @@ Currently no tests exist.
 src/main/java/froyln/botinventory/
 ├── BotInventory.java          — Mod entrypoint, CarpetExtension hooks
 ├── BotInventoryRules.java     — Carpet rule definitions (3 rules)
-└── ViewCommand.java           — /player <name> view inventory|enderchest
+├── ViewCommand.java           — /player <name> view inventory|enderchest
+└── mixin/
+    └── PlayerEntityInteractMixin.java  — Right-click fake player → open inventory
 
 src/main/resources/
-└── fabric.mod.json            — Fabric mod metadata
+├── botinventory-carpet.mixins.json  — Mixin config
+└── fabric.mod.json                  — Fabric mod metadata
 ```
 
 ## Architecture
@@ -63,7 +66,7 @@ Three rules, all defaulting to `"false"`, all accepting `true`, `false`, `ops`, 
 
 | Rule | Used by |
 |---|---|
-| `viewFakePlayerInventoryRightClick` | Planned: right-click to open inventory (not yet implemented) |
+| `viewFakePlayerInventoryRightClick` | Right-click fake player → open inventory (`PlayerEntityInteractMixin`) |
 | `viewPlayerInventoryCommand` | `/player <name> view inventory` |
 | `viewPlayerEnderchestCommand` | `/player <name> view enderchest` |
 
@@ -74,6 +77,17 @@ Attaches `view inventory` and `view enderchest` as child nodes of the existing `
 Permission check via `isViewAllowed()`: interprets the rule value as a boolean (`true`/`false`), `ops` (permission level 2), or numeric threshold, and gates the `requires()` on each subcommand.
 
 Both `viewInventory` and `viewEnderchest` resolve the target player, throw if offline, then open an sgui `SimpleGui` with the target's inventory (fixed 9x5) or ender chest (adaptive 9x1–9x6).
+
+### Mixin (`PlayerEntityInteractMixin.java`)
+
+Intercepts `PlayerEntity.interact(Entity target, Hand)` — called on the **clicker** when any player right-clicks an entity. Only triggers for `INTERACT`/`INTERACT_AT` packet types, never for `ATTACK` (left-click), so attacking fake players works normally.
+
+Flow:
+1. Player right-clicks a fake player → `PlayerEntity.interact(target, hand)` fires
+2. Mixin checks `target instanceof EntityPlayerMPFake`
+3. Checks `viewFakePlayerInventoryRightClick` rule via `ViewCommand.isPlayerAllowed()`
+4. Opens inventory via `ViewCommand.openInventory()` (same GUI as `/player view inventory`)
+5. Returns `ActionResult.SUCCESS` to cancel normal right-click behavior (armor swap, etc.)
 
 ### Slots are not copy-protected
 

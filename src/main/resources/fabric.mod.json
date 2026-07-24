@@ -20,5 +20,8 @@
     "main": [
       "froyln.botinventory.BotInventory"
     ]
-  }
+  },
+  "mixins": [
+    "botinventory-carpet.mixins.json"
+  ]
 }
