@@ -4,7 +4,7 @@ import carpet.api.rule.Rule;
 
 public class BotInventoryRules {
     @Rule(
-        desc = "Allows clicking items in fake player inventories",
+        desc = "Allows right click in fake player to view their inventories",
         options = {"true", "false", "op", "0", "1", "2", "3", "4"}
     )
     public static String clickFakePlayerInventory = "false";
