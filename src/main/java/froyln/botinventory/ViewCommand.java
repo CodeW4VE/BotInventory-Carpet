@@ -4,8 +4,10 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.inventory.EnderChestInventory;
+import net.minecraft.item.Items;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.server.command.ServerCommandSource;
@@ -58,6 +60,12 @@ public class ViewCommand {
             int x = 8 + (i % 9) * 18;
             int y = 18 + (i / 9) * 18;
             gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
+        }
+
+        // ponytail: 9x5 has 45 slots, player inventory only has 36. fill the rest with barrier
+        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
+        for (int i = targetInv.size(); i < gui.getVirtualSize(); i++) {
+            gui.setSlot(i, barrier);
         }
 
         gui.open();
