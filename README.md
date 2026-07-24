@@ -68,17 +68,6 @@ Example:
 /carpet viewPlayerInventoryCommand true
 ```
 
-## Usage
-
-1. Install the mod and start your server with fabric‑carpet.
-2. Enable the desired rules with `/carpet <rule> <value>`.
-3. Spawn a fake player with `/player <name> spawn`.
-4. **Right‑click the fake player** — their inventory opens (if `viewFakePlayerInventoryRightClick` allows it).
-5. Or use **commands**:
-   - `/player <name> view inventory` — opens the fake player's main inventory (9x5 grid).
-   - `/player <name> view enderchest` — opens the fake player's ender chest (adaptive 9x1–9x6).
-6. Both GUI methods allow full item manipulation — add, remove, or rearrange items.
-
 ## Dependencies
 
 - [Fabric Loader](https://fabricmc.net/)
