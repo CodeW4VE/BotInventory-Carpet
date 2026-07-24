@@ -4,12 +4,9 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
-import net.minecraft.item.Items;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.slot.Slot;
 import net.minecraft.inventory.EnderChestInventory;
+import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
@@ -68,12 +65,8 @@ public class ViewCommand {
         SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
         gui.setTitle(targetPlayer.getName());
 
-        for (int i = 0; i < gui.getSize(); i++) {
-            gui.setSlot(i, new GuiElementBuilder(Items.BARRIER).setName(Text.literal("")).build());
-        }
-
         for (int i = 0; i < targetPlayer.getInventory().size(); i++) {
-            gui.setSlot(i, new Slot(targetPlayer.getInventory(), i, 0, 0));
+            gui.setSlot(i, targetPlayer.getInventory().getStack(i).copy());
         }
 
         gui.open();
@@ -104,12 +97,8 @@ public class ViewCommand {
         SimpleGui gui = new SimpleGui(screenHandlerType, player, false);
         gui.setTitle(targetPlayer.getName());
 
-        for (int i = 0; i < gui.getSize(); i++) {
-            gui.setSlot(i, new GuiElementBuilder(Items.BARRIER).setName(Text.literal("")).build());
-        }
-
         for (int i = 0; i < enderChest.size(); i++) {
-            gui.setSlot(i, new Slot(enderChest, i, 0, 0));
+            gui.setSlot(i, enderChest.getStack(i).copy());
         }
 
         gui.open();

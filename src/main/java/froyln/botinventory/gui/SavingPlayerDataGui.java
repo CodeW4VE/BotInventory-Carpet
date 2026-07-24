@@ -13,7 +13,6 @@ public class SavingPlayerDataGui extends SimpleGui {
     }
 
     @Override
-    public void onRemoved() {
-        // ponytail: save player data when GUI closes
+    public void onClose() {
     }
 }
