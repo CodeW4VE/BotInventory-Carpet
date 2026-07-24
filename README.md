@@ -4,8 +4,8 @@
 
 **Fabric Carpet addon that lets players view and manage fake player inventories and ender chests via right‑click or commands.**
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21-62B47D?logo=minecraft&logoColor=white)](https://www.minecraft.net/)
-[![Fabric](https://img.shields.io/badge/Fabric%20Loader-0.15.11%2B-87CEEB?logo=fabric&logoColor=white)](https://fabricmc.net/)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.2-62B47D?logo=minecraft&logoColor=white)](https://www.minecraft.net/)
+[![Fabric](https://img.shields.io/badge/Fabric%20Loader-0.16.7%2B-87CEEB?logo=fabric&logoColor=white)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-21%2B-ED8B00?logo=java&logoColor=white)](https://www.java.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -25,9 +25,9 @@ A Carpet extension that allows server operators and players to view and interact
 ## Requirements
 
 - [Java](https://www.java.com/) 21 or higher
-- [Minecraft](https://www.minecraft.net/) 1.21 server with Fabric loader
-- [Fabric Loader](https://fabricmc.net/) 0.15.11 or higher
-- [Fabric Carpet](https://github.com/gnembon/fabric-carpet) 1.21-1.4.147 or compatible
+- [Minecraft](https://www.minecraft.net/) 1.21.2 server with Fabric loader
+- [Fabric Loader](https://fabricmc.net/) 0.16.7 or higher
+- [Fabric Carpet](https://github.com/gnembon/fabric-carpet) 1.21.2-1.4.158 or compatible
 
 ## Installation
 
