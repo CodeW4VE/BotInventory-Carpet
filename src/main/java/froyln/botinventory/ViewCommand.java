@@ -38,7 +38,7 @@ public class ViewCommand {
         return switch (ruleValue) {
             case "true" -> true;
             case "false" -> false;
-            case "op" -> source.hasPermissionLevel(2);
+            case "ops" -> source.hasPermissionLevel(2);
             default -> {
                 try {
                     yield source.hasPermissionLevel(Integer.parseInt(ruleValue));

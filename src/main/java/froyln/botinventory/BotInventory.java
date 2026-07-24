@@ -29,7 +29,7 @@ public class BotInventory implements CarpetExtension, ModInitializer {
     @Override
     public Map<String, String> canHasTranslations(String lang) {
         return Map.of(
-            "carpet.rule.viewFakePlayerInventoryRightClick.desc", "Allow right click in fake player and see their inventories",
+            "carpet.rule.clickFakePlayerInventory.desc", "Allow right click in fake player and see their inventories",
             "carpet.rule.viewPlayerInventoryCommand.desc", "Allow /player view inventory command",
             "carpet.rule.viewPlayerEnderchestCommand.desc", "Allow /player view enderchest command"
         );
