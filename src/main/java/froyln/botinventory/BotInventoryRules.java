@@ -11,7 +11,7 @@ public class BotInventoryRules {
         options = {"true", "false", "ops", "0", "1", "2", "3", "4"},
         strict = false
     )
-    public static String clickFakePlayerInventory = "false";
+    public static String viewFakePlayerInventoryRightClick = "false";
 
     @Rule(
         categories = {COMMAND},
