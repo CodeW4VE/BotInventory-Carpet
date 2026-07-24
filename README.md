@@ -2,7 +2,7 @@
 
 # BotInventory Carpet
 
-**Fabric Carpet addon that lets players view and manage fake player (bot) inventories and ender chests via right‑click or commands, gated by permission rules.**
+**Fabric Carpet addon that lets players view and manage fake player inventories and ender chests via right‑click or commands.**
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.21-62B47D?logo=minecraft&logoColor=white)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Fabric%20Loader-0.15.11%2B-87CEEB?logo=fabric&logoColor=white)](https://fabricmc.net/)
@@ -15,7 +15,7 @@
 
 ## What is it?
 
-A Carpet extension that allows server operators and players to view and interact with fake player (bot) inventories. Right‑click a fake player to open their inventory, or use `/player <name> view inventory|enderchest`. Everything is gated by three Carpet rules with fine‑grained permission control.
+A Carpet extension that allows server operators and players to view and interact with fake player (bot) inventories. Right‑click a fake player to open their inventory, or use `/player <name> view inventory|enderchest`. Everything is gated by three Carpet rules.
 
 ## Features
 
