@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "botinventory-carpet",
   "version": "${version}",
-  "name": "BotInventory Carpet",
+  "name": "BotInventory-Carpet",
   "description": "A Carpet addon mod for Minecraft",
   "authors": [
     "froyln"
