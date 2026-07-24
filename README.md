@@ -21,9 +21,6 @@ A Carpet extension that allows server operators and players to view and interact
 
 - **Right‑click to open**: Right‑click any fake player (spawned with carpet's `/player`) to instantly open their inventory — works only on fake players, never on real players.
 - **Command access**: `/player <name> view inventory` and `/player <name> view enderchest` for on‑demand access.
-- **Permission gating**: Three independent Carpet rules (`viewFakePlayerInventoryRightClick`, `viewPlayerInventoryCommand`, `viewPlayerEnderchestCommand`) each accept `true`, `false`, `ops`, or numeric permission levels (0–4).
-- **Modifiable inventories**: Slots redirect to the fake player's real inventory — items can be added, removed, or rearranged.
-- **Attacks unaffected**: Left‑clicking (attacking) fake players works normally and does **not** open the inventory.
 
 ## Requirements
 
