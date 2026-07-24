@@ -8,7 +8,7 @@
     "froyln"
   ],
   "license": "MIT",
-  "icon": "",
+  "icon": "assets/botinventory-carpet/icon.png",
   "environment": "*",
   "depends": {
     "fabricloader": ">=0.15.0",
