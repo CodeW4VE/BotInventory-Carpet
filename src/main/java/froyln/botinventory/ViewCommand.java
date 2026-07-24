@@ -16,8 +16,8 @@ import net.minecraft.world.inventory.PlayerEnderChestContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Items;
 
-import static net.minecraft.Commands.argument;
-import static net.minecraft.Commands.literal;
+import static net.minecraft.commands.Commands.argument;
+import static net.minecraft.commands.Commands.literal;
 
 public class ViewCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {

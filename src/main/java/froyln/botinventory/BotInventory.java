@@ -1,8 +1,9 @@
 package froyln.botinventory;
 
-import carpet.api.extension.CarpetExtension;
-import carpet.api.extension.CarpetExtensionServerState;
+import carpet.CarpetExtension;
+import carpet.CarpetServer;
 import com.mojang.brigadier.CommandDispatcher;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 
@@ -10,20 +11,20 @@ public class BotInventory implements CarpetExtension {
     public static final String MOD_ID = "botinventory-carpet";
 
     @Override
-    public void onServerLoaded(MinecraftServer server) {
-        CarpetExtensionServerState.registerExtensionForServer(server, this);
+    public void onGameStarted() {
+        CarpetServer.settingsManager.parseSettingsClass(BotInventoryRules.class);
     }
 
     @Override
-    public void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext commandBuildContext) {
         ViewCommand.register(dispatcher);
     }
 
     @Override
-    public void tick(MinecraftServer server) {
+    public void onTick(MinecraftServer server) {
     }
 
     @Override
-    public void onClosing(MinecraftServer server) {
+    public void onServerClosed(MinecraftServer server) {
     }
 }

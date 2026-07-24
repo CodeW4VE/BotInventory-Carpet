@@ -1,6 +1,6 @@
 package froyln.botinventory;
 
-import carpet.api.rule.Rule;
+import carpet.api.settings.Rule;
 
 public class BotInventoryRules {
     @Rule(
