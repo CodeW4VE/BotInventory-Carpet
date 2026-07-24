@@ -2,12 +2,12 @@ package froyln.botinventory;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,41 +16,50 @@ import net.minecraft.world.inventory.PlayerEnderChestContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Items;
 
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import static net.minecraft.Commands.argument;
+import static net.minecraft.Commands.literal;
 
 public class ViewCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(literal("botinventory")
-            .then(literal("view")
-                .then(literal("inventory")
-                    .requires(source -> BotInventoryRules.viewPlayerInventoryCommand.equals("true") 
-                        || (BotInventoryRules.viewPlayerInventoryCommand.equals("op") && source.hasPermission(2))
-                        || isPermissionLevel(source, BotInventoryRules.viewPlayerInventoryCommand))
-                    .then(argument("target", GameProfileArgument.gameProfile())
-                        .executes(ViewCommand::viewInventory)))
-                .then(literal("enderchest")
-                    .requires(source -> BotInventoryRules.viewPlayerEnderchestCommand.equals("true") 
-                        || (BotInventoryRules.viewPlayerEnderchestCommand.equals("op") && source.hasPermission(2))
-                        || isPermissionLevel(source, BotInventoryRules.viewPlayerEnderchestCommand))
-                    .then(argument("target", GameProfileArgument.gameProfile())
-                        .executes(ViewCommand::viewEnderchest)))));
+        var playerNode = dispatcher.getRoot().getChild("player");
+        if (playerNode == null) return;
+
+        var viewNode = literal("view")
+            .then(literal("inventory")
+                .requires(source -> isViewAllowed(source, BotInventoryRules.viewPlayerInventoryCommand))
+                .executes(ViewCommand::viewInventory))
+            .then(literal("enderchest")
+                .requires(source -> isViewAllowed(source, BotInventoryRules.viewPlayerEnderchestCommand))
+                .executes(ViewCommand::viewEnderchest)))
+            .build();
+
+        playerNode.addChild(viewNode);
     }
 
-    private static boolean isPermissionLevel(CommandSourceStack source, String ruleValue) {
-        try {
-            int level = Integer.parseInt(ruleValue);
-            return source.hasPermission(level);
-        } catch (NumberFormatException e) {
-            return false;
-        }
+    private static boolean isViewAllowed(CommandSourceStack source, String ruleValue) {
+        return switch (ruleValue) {
+            case "true" -> true;
+            case "false" -> false;
+            case "op" -> source.hasPermission(2);
+            default -> {
+                try {
+                    yield source.hasPermission(Integer.parseInt(ruleValue));
+                } catch (NumberFormatException e) {
+                    yield false;
+                }
+            }
+        };
+    }
+
+    private static ServerPlayer getTargetPlayer(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        String playerName = StringArgumentType.getString(context, "player");
+        MinecraftServer server = context.getSource().getServer();
+        return server.getPlayerList().getPlayerByName(playerName);
     }
 
     private static int viewInventory(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
-        GameProfile targetProfile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
-        MinecraftServer server = context.getSource().getServer();
-        ServerPlayer targetPlayer = server.getPlayerList().getPlayerByName(targetProfile.getName());
+        ServerPlayer targetPlayer = getTargetPlayer(context);
 
         if (targetPlayer == null) {
             context.getSource().sendFailure(Component.literal("Player not found or not online"));
@@ -74,9 +83,7 @@ public class ViewCommand {
 
     private static int viewEnderchest(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
-        GameProfile targetProfile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
-        MinecraftServer server = context.getSource().getServer();
-        ServerPlayer targetPlayer = server.getPlayerList().getPlayerByName(targetProfile.getName());
+        ServerPlayer targetPlayer = getTargetPlayer(context);
 
         if (targetPlayer == null) {
             context.getSource().sendFailure(Component.literal("Player not found or not online"));
