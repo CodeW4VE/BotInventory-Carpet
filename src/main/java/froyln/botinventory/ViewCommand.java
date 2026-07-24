@@ -30,7 +30,7 @@ public class ViewCommand {
                 .executes(ViewCommand::viewInventory))
             .then(literal("enderchest")
                 .requires(source -> isViewAllowed(source, BotInventoryRules.viewPlayerEnderchestCommand))
-                .executes(ViewCommand::viewEnderchest)))
+                .executes(ViewCommand::viewEnderchest))
             .build();
 
         playerNode.addChild(viewNode);

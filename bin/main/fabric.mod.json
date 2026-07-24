@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "botinventory-carpet",
+  "version": "${version}",
+  "name": "BotInventory Carpet",
+  "description": "A Carpet addon mod for Minecraft",
+  "authors": [
+    "froyln"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "",
+  "environment": "*",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "carpet": "*"
+  },
+  "entrypoints": {
+    "carpet": [
+      "froyln.botinventory.BotInventory"
+    ]
+  }
+}
