@@ -7,18 +7,20 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.inventory.EnderChestInventory;
 import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.slot.Slot;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
-
-import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
 public class ViewCommand {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         var playerNode = dispatcher.getRoot().getChild("player");
         if (playerNode == null) return;
+
+        var playerArgNode = playerNode.getChild("player");
+        if (playerArgNode == null) return;
 
         var viewNode = literal("view")
             .then(literal("inventory")
@@ -29,7 +31,7 @@ public class ViewCommand {
                 .executes(ViewCommand::viewEnderchest))
             .build();
 
-        playerNode.addChild(viewNode);
+        playerArgNode.addChild(viewNode);
     }
 
     private static boolean isViewAllowed(ServerCommandSource source, String ruleValue) {
@@ -65,8 +67,11 @@ public class ViewCommand {
         SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
         gui.setTitle(targetPlayer.getName());
 
-        for (int i = 0; i < targetPlayer.getInventory().size(); i++) {
-            gui.setSlot(i, targetPlayer.getInventory().getStack(i).copy());
+        var targetInv = targetPlayer.getInventory();
+        for (int i = 0; i < targetInv.size(); i++) {
+            int x = 8 + (i % 9) * 18;
+            int y = 18 + (i / 9) * 18;
+            gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
         }
 
         gui.open();
@@ -98,7 +103,9 @@ public class ViewCommand {
         gui.setTitle(targetPlayer.getName());
 
         for (int i = 0; i < enderChest.size(); i++) {
-            gui.setSlot(i, enderChest.getStack(i).copy());
+            int x = 8 + (i % 9) * 18;
+            int y = 18 + (i / 9) * 18;
+            gui.setSlotRedirect(i, new Slot(enderChest, i, x, y));
         }
 
         gui.open();

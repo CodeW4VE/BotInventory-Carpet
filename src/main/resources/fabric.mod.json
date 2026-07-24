@@ -18,7 +18,7 @@
     "carpet": "*"
   },
   "entrypoints": {
-    "carpet": [
+    "main": [
       "froyln.botinventory.BotInventory"
     ]
   }

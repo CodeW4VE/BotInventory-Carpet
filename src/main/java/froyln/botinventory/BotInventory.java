@@ -3,16 +3,36 @@ package froyln.botinventory;
 import carpet.CarpetExtension;
 import carpet.CarpetServer;
 import com.mojang.brigadier.CommandDispatcher;
+import net.fabricmc.api.ModInitializer;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.MinecraftServer;
 
-public class BotInventory implements CarpetExtension {
+import java.util.Map;
+
+public class BotInventory implements CarpetExtension, ModInitializer {
     public static final String MOD_ID = "botinventory-carpet";
+
+    static {
+        CarpetServer.manageExtension(new BotInventory());
+    }
+
+    @Override
+    public void onInitialize() {
+    }
 
     @Override
     public void onGameStarted() {
         CarpetServer.settingsManager.parseSettingsClass(BotInventoryRules.class);
+    }
+
+    @Override
+    public Map<String, String> canHasTranslations(String lang) {
+        return Map.of(
+            "carpet.rule.viewFakePlayerInventoryRightClick.desc", "Allow right click in fake player and see their inventories",
+            "carpet.rule.viewPlayerInventoryCommand.desc", "Allow /player view inventory command",
+            "carpet.rule.viewPlayerEnderchestCommand.desc", "Allow /player view enderchest command"
+        );
     }
 
     @Override
