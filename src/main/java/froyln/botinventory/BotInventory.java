@@ -11,7 +11,6 @@ import net.minecraft.server.MinecraftServer;
 import java.util.Map;
 
 public class BotInventory implements CarpetExtension, ModInitializer {
-    public static final String MOD_ID = "botinventory-carpet";
 
     static {
         CarpetServer.manageExtension(new BotInventory());

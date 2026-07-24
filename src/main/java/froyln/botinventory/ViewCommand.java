@@ -52,17 +52,14 @@ public class ViewCommand {
     private static ServerPlayerEntity getTargetPlayer(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         String playerName = StringArgumentType.getString(context, "player");
         MinecraftServer server = context.getSource().getServer();
-        return server.getPlayerManager().getPlayer(playerName);
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(playerName);
+        if (player == null) throw new com.mojang.brigadier.exceptions.SimpleCommandExceptionType(Text.literal("Player not found or not online")).create();
+        return player;
     }
 
     private static int viewInventory(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
         ServerPlayerEntity targetPlayer = getTargetPlayer(context);
-
-        if (targetPlayer == null) {
-            context.getSource().sendError(Text.literal("Player not found or not online"));
-            return 0;
-        }
 
         SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
         gui.setTitle(targetPlayer.getName());
@@ -81,11 +78,6 @@ public class ViewCommand {
     private static int viewEnderchest(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
         ServerPlayerEntity targetPlayer = getTargetPlayer(context);
-
-        if (targetPlayer == null) {
-            context.getSource().sendError(Text.literal("Player not found or not online"));
-            return 0;
-        }
 
         EnderChestInventory enderChest = targetPlayer.getEnderChestInventory();
 

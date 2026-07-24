@@ -1,6 +1,5 @@
 plugins {
     id 'fabric-loom' version '1.7-SNAPSHOT'
-    id 'maven-publish'
 }
 
 version = project.mod_version
@@ -23,7 +22,6 @@ dependencies {
 
     modImplementation "carpet:fabric-carpet:${project.carpet_version}"
     modImplementation include("eu.pb4:sgui:${project.sgui_version}")
-    modImplementation "me.lucko:fabric-permissions-api:${project.permissions_version}"
 }
 
 processResources {
@@ -41,5 +39,4 @@ tasks.withType(JavaCompile).configureEach {
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
-    withSourcesJar()
 }
