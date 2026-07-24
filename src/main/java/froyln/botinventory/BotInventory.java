@@ -3,8 +3,8 @@ package froyln.botinventory;
 import carpet.CarpetExtension;
 import carpet.CarpetServer;
 import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.MinecraftServer;
 
 public class BotInventory implements CarpetExtension {
@@ -16,7 +16,7 @@ public class BotInventory implements CarpetExtension {
     }
 
     @Override
-    public void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext commandBuildContext) {
+    public void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess commandBuildContext) {
         ViewCommand.register(dispatcher);
     }
 

@@ -1,45 +1,40 @@
 package froyln.botinventory.gui;
 
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.item.ItemStack;
 
 public class UnmodifiableSlot extends Slot {
-    public UnmodifiableSlot(Container inventory, int index) {
+    public UnmodifiableSlot(Inventory inventory, int index) {
         super(inventory, index, 0, 0);
     }
 
     @Override
-    public boolean mayPlace(ItemStack stack) {
+    public boolean canInsert(ItemStack stack) {
         return false;
     }
 
     @Override
-    public boolean mayPickup(Player player) {
+    public boolean canTakeItems(PlayerEntity player) {
         return false;
     }
 
     @Override
-    public boolean allowModification(Player player) {
-        return false;
-    }
-
-    @Override
-    public ItemStack remove(int amount) {
+    public ItemStack takeStack(int amount) {
         return ItemStack.EMPTY;
     }
 
     @Override
-    public ItemStack safeInsert(ItemStack stack, int count) {
+    public ItemStack insertStack(ItemStack stack, int count) {
         return stack;
     }
 
     @Override
-    public void setByPlayer(ItemStack stack) {
+    public void onTakeItem(PlayerEntity player, ItemStack stack) {
     }
 
     @Override
-    public void set(ItemStack stack) {
+    public void setStackNoCallbacks(ItemStack stack) {
     }
 }

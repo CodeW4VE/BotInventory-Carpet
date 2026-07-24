@@ -1,13 +1,13 @@
 package froyln.botinventory.gui;
 
 import eu.pb4.sgui.api.gui.SimpleGui;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.MenuType;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.screen.ScreenHandlerType;
 
 public class SavingPlayerDataGui extends SimpleGui {
-    private final ServerPlayer savedPlayer;
+    private final ServerPlayerEntity savedPlayer;
 
-    public SavingPlayerDataGui(MenuType<?> type, ServerPlayer player, ServerPlayer savedPlayer) {
+    public SavingPlayerDataGui(ScreenHandlerType<?> type, ServerPlayerEntity player, ServerPlayerEntity savedPlayer) {
         super(type, player, false);
         this.savedPlayer = savedPlayer;
     }
@@ -15,6 +15,5 @@ public class SavingPlayerDataGui extends SimpleGui {
     @Override
     public void onRemoved() {
         // ponytail: save player data when GUI closes
-        // TODO: implement player data saving similar to InvView
     }
 }
