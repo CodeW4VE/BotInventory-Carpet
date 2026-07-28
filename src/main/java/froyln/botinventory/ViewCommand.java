@@ -6,6 +6,8 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
+import net.minecraft.command.permission.Permission;
+import net.minecraft.command.permission.PermissionLevel;
 import net.minecraft.inventory.EnderChestInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.ScreenHandlerType;
@@ -40,15 +42,23 @@ public class ViewCommand {
         return switch (ruleValue) {
             case "true" -> true;
             case "false" -> false;
-            case "ops" -> player.getCommandSource().hasPermissionLevel(2);
+            case "ops" -> hasPermission(player, 2);
             default -> {
                 try {
-                    yield player.getCommandSource().hasPermissionLevel(Integer.parseInt(ruleValue));
+                    yield hasPermission(player, Integer.parseInt(ruleValue));
                 } catch (NumberFormatException e) {
                     yield false;
                 }
             }
         };
+    }
+
+    private static boolean hasPermission(ServerPlayerEntity player, int level) {
+        return player.getPermissions().hasPermission(new Permission.Level(PermissionLevel.fromLevel(level)));
+    }
+
+    private static boolean hasPermission(ServerCommandSource source, int level) {
+        return source.getPermissions().hasPermission(new Permission.Level(PermissionLevel.fromLevel(level)));
     }
 
     public static void openInventory(ServerPlayerEntity player, ServerPlayerEntity targetPlayer) {
@@ -75,10 +85,10 @@ public class ViewCommand {
         return switch (ruleValue) {
             case "true" -> true;
             case "false" -> false;
-            case "ops" -> source.hasPermissionLevel(2);
+            case "ops" -> hasPermission(source, 2);
             default -> {
                 try {
-                    yield source.hasPermissionLevel(Integer.parseInt(ruleValue));
+                    yield hasPermission(source, Integer.parseInt(ruleValue));
                 } catch (NumberFormatException e) {
                     yield false;
                 }
