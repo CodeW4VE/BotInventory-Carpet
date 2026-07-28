@@ -26,7 +26,7 @@ Currently no tests exist.
 
 ## Stack
 
-- Java 21, Fabric Loom 1.9, Yarn mappings
+- Java 21, Fabric Loom 1.10, Yarn mappings
 - fabric-carpet (rules + command integration)
 - sgui (SimpleGui for inventory display)
 
