@@ -27,7 +27,6 @@ public class BotInventoryRules {
     )
     public static String viewPlayerEnderchestCommand = "false";
 
-    // Off by default: this is new behavior, and the one that writes to disk.
     @Rule(
         categories = {COMMAND},
         options = {"true", "false", "ops", "0", "1", "2", "3", "4"},
