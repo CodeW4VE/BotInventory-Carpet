@@ -27,13 +27,14 @@ public final class ViewSessions {
 
     public static final class OfflineSession {
         public final GameProfile entry;
-        public final NbtCompound openedSnapshot;
+        /** What we last knew to be on disk - our own baseline, not "state at open". Advances after every successful write; see PLAN.md. */
+        public NbtCompound lastKnownDiskState;
         public GuiInterface gui;
         public boolean stale;
 
-        OfflineSession(GameProfile entry, NbtCompound openedSnapshot) {
+        OfflineSession(GameProfile entry, NbtCompound lastKnownDiskState) {
             this.entry = entry;
-            this.openedSnapshot = openedSnapshot;
+            this.lastKnownDiskState = lastKnownDiskState;
         }
     }
 
