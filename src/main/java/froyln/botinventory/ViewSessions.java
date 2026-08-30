@@ -38,8 +38,7 @@ public final class ViewSessions {
         }
     }
 
-    // --- online sessions: step 0 fix, close GUIs orphaned by target logout ---
-
+    // step 0 fix: close GUIs orphaned by target logout
     public static void registerOnline(UUID target, GuiInterface gui) {
         onlineSessions.computeIfAbsent(target, k -> new HashSet<>()).add(gui);
     }
@@ -51,8 +50,7 @@ public final class ViewSessions {
         if (guis.isEmpty()) onlineSessions.remove(target);
     }
 
-    // --- offline sessions ---
-
+    // offline sessions
     /** Registers the target as having an open offline GUI. False if one is already open (second viewer refused). */
     public static boolean tryRegisterOffline(UUID target, OfflineSession session) {
         return offlineSessions.putIfAbsent(target, session) == null;
@@ -62,8 +60,7 @@ public final class ViewSessions {
         offlineSessions.remove(target, session);
     }
 
-    // --- Carpet hooks, wired from BotInventory ---
-
+    // Carpet hooks, wired from BotInventory
     /** Target logged in: any open offline GUI on them is now stale (see PLAN.md race notes). */
     public static void onPlayerLoggedIn(ServerPlayerEntity player) {
         OfflineSession session = offlineSessions.get(player.getUuid());
