@@ -9,8 +9,8 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.inventory.EnderChestInventory;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.server.command.ServerCommandSource;
@@ -23,8 +23,19 @@ import java.util.Optional;
 import static net.minecraft.server.command.CommandManager.literal;
 
 public class ViewCommand {
-    private static final SimpleCommandExceptionType PLAYER_NOT_FOUND =
-        new SimpleCommandExceptionType(Text.literal("Player not found or not online"));
+    /**
+     * Real usable player inventory slots: 36 main+hotbar, 4 armor, 1 offhand.
+     * NOT the same as PlayerInventory#size(), which is 43 in 1.21.11 - it also
+     * counts the BODY and SADDLE equipment slots (indices 41/42), added for
+     * other entity types but present in every player's slot map too. Those
+     * aren't meaningful for a player and shouldn't be shown as editable.
+     */
+    private static final int DISPLAYED_INVENTORY_SIZE = 41;
+
+    private static final SimpleCommandExceptionType OFFLINE_VIEWING_DISABLED =
+        new SimpleCommandExceptionType(Text.literal("Player not online, and offline viewing is disabled (viewOfflinePlayerInventory rule)"));
+    private static final SimpleCommandExceptionType NO_SAVED_DATA =
+        new SimpleCommandExceptionType(Text.literal("Player not online, and has no saved data (never joined this server)"));
     private static final SimpleCommandExceptionType NOT_ALLOWED_REAL_PLAYER =
         new SimpleCommandExceptionType(Text.literal("Not allowed to view a real player's inventory"));
     private static final SimpleCommandExceptionType ALREADY_OPEN =
@@ -69,15 +80,14 @@ public class ViewCommand {
         gui.setTitle(targetPlayer.getName());
 
         var targetInv = targetPlayer.getInventory();
-        for (int i = 0; i < targetInv.size(); i++) {
+        for (int i = 0; i < DISPLAYED_INVENTORY_SIZE; i++) {
             int x = 8 + (i % 9) * 18;
             int y = 18 + (i / 9) * 18;
             gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
         }
 
-        // ponytail: 9x5 has 45 slots, player inventory only has 36. fill the rest with barrier
         var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
-        for (int i = targetInv.size(); i < gui.getVirtualSize(); i++) {
+        for (int i = DISPLAYED_INVENTORY_SIZE; i < gui.getVirtualSize(); i++) {
             gui.setSlot(i, barrier);
         }
 
@@ -125,12 +135,12 @@ public class ViewCommand {
         }
 
         if (!isViewAllowed(source, BotInventoryRules.viewOfflinePlayerInventory)) {
-            throw PLAYER_NOT_FOUND.create();
+            throw OFFLINE_VIEWING_DISABLED.create();
         }
 
         Optional<OfflineInventoryAccess.Target> offline = OfflineInventoryAccess.resolve(server, name);
         if (offline.isEmpty()) {
-            throw PLAYER_NOT_FOUND.create();
+            throw NO_SAVED_DATA.create();
         }
 
         OfflineInventoryAccess.Target target = offline.get();
@@ -171,14 +181,14 @@ public class ViewCommand {
         session.gui = gui;
 
         var ghostInv = ghost.getInventory();
-        for (int i = 0; i < ghostInv.size(); i++) {
+        for (int i = 0; i < DISPLAYED_INVENTORY_SIZE; i++) {
             int x = 8 + (i % 9) * 18;
             int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new WriteBackSlot(ghostInv, i, x, y, () -> OfflineInventoryAccess.writeBack(server, session, ghost)));
+            gui.setSlotRedirect(i, new Slot(ghostInv, i, x, y));
         }
 
         var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
-        for (int i = ghostInv.size(); i < gui.getVirtualSize(); i++) {
+        for (int i = DISPLAYED_INVENTORY_SIZE; i < gui.getVirtualSize(); i++) {
             gui.setSlot(i, barrier);
         }
 
@@ -231,7 +241,7 @@ public class ViewCommand {
         for (int i = 0; i < enderChest.size(); i++) {
             int x = 8 + (i % 9) * 18;
             int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new WriteBackSlot(enderChest, i, x, y, () -> OfflineInventoryAccess.writeBack(server, session, ghost)));
+            gui.setSlotRedirect(i, new Slot(enderChest, i, x, y));
         }
 
         gui.open();
@@ -253,44 +263,53 @@ public class ViewCommand {
         }
     }
 
-    /** Offline GUI: writes back to disk on close (unless the session went stale - the target logged in mid-edit). */
+    /**
+     * Offline GUI: writes back to disk whenever the ghost's inventory
+     * actually changes, checked every tick rather than on a per-slot mutation
+     * hook. Slot#markDirty() is not a reliable "something changed" signal -
+     * see the comment on OfflineInventoryAccess#currentEditedSnapshot for why
+     * a per-slot hook missed single-item drops and caused a duplication bug.
+     */
     private static final class OfflineViewGui extends SimpleGui {
         private final MinecraftServer server;
         private final ViewSessions.OfflineSession session;
         private final ServerPlayerEntity ghost;
+        private NbtCompound lastWritten;
 
         OfflineViewGui(ScreenHandlerType<?> type, ServerPlayerEntity viewer, MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayerEntity ghost) {
             super(type, viewer, false);
             this.server = server;
             this.session = session;
             this.ghost = ghost;
+            this.lastWritten = OfflineInventoryAccess.currentEditedSnapshot(server, ghost);
+        }
+
+        @Override
+        public void onTick() {
+            super.onTick();
+            syncIfChanged();
         }
 
         @Override
         public void onClose() {
             super.onClose();
-            if (!session.stale && !OfflineInventoryAccess.writeBack(server, session, ghost)) {
+            syncIfChanged();
+            ViewSessions.unregisterOffline(session.entry.getId(), session);
+        }
+
+        private void syncIfChanged() {
+            if (session.stale) return;
+
+            NbtCompound current = OfflineInventoryAccess.currentEditedSnapshot(server, ghost);
+            if (current.equals(lastWritten)) return;
+
+            if (OfflineInventoryAccess.writeBack(server, session, ghost)) {
+                lastWritten = current;
+            } else {
                 getPlayer().sendMessage(Text.literal(
                     "Your last changes to " + session.entry.getName() + "'s inventory were not saved."
                 ));
             }
-            ViewSessions.unregisterOffline(session.entry.getId(), session);
-        }
-    }
-
-    /** Writes back to disk on every slot mutation, not only on close, to shrink the race window (see PLAN.md). */
-    private static final class WriteBackSlot extends Slot {
-        private final Runnable onChange;
-
-        WriteBackSlot(Inventory inventory, int index, int x, int y, Runnable onChange) {
-            super(inventory, index, x, y);
-            this.onChange = onChange;
-        }
-
-        @Override
-        public void markDirty() {
-            super.markDirty();
-            onChange.run();
         }
     }
 }
