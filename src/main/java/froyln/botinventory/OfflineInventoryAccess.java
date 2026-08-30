@@ -51,7 +51,6 @@ public final class OfflineInventoryAccess {
         UUID uuid;
         boolean isBot;
         if (mojangUuid != null) {
-            // Resolves to a real Mojang account, whether or not it has ever joined.
             uuid = mojangUuid;
             isBot = false;
         } else if (server.isOnlineMode()) {
