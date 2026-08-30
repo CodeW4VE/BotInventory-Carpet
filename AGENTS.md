@@ -37,6 +37,7 @@ src/main/java/froyln/botinventory/
 ├── BotInventory.java          — Mod entrypoint, CarpetExtension hooks
 ├── BotInventoryRules.java     — Carpet rule definitions (3 rules)
 ├── ViewCommand.java           — /player <name> view inventory|enderchest
+├── ViewSessions.java          — Open-GUI bookkeeping; closes GUIs orphaned by target logout
 └── mixin/
     └── PlayerEntityInteractMixin.java  — Right-click fake player → open inventory
 
@@ -58,6 +59,7 @@ Implements both `CarpetExtension` and `ModInitializer`. Registers itself as a Ca
 | `onGameStarted()` | Parses rules from `BotInventoryRules.class` |
 | `registerCommands()` | Attaches `ViewCommand` under `/player` |
 | `canHasTranslations()` | Provides English descriptions for each rule |
+| `onPlayerLoggedOut()` | Delegates to `ViewSessions.onPlayerLoggedOut` (see below) |
 | `onTick()` / `onServerClosed()` | No-op stubs |
 
 ### Carpet rules (`BotInventoryRules.java`)
@@ -76,7 +78,13 @@ Attaches `view inventory` and `view enderchest` as child nodes of the existing `
 
 Permission check via `isViewAllowed()`: interprets the rule value as a boolean (`true`/`false`), `ops` (permission level 2), or numeric threshold, and gates the `requires()` on each subcommand.
 
-Both `viewInventory` and `viewEnderchest` resolve the target player, throw if offline, then open an sgui `SimpleGui` with the target's inventory (fixed 9x5) or ender chest (adaptive 9x1–9x6).
+Both `viewInventory` and `viewEnderchest` resolve the target player, throw if offline, then open an sgui `SimpleGui` with the target's inventory (fixed 9x5) or ender chest (adaptive 9x1–9x6), redirecting slots directly onto the target's live `PlayerInventory`/`EnderChestInventory`.
+
+### View sessions (`ViewSessions.java`) and the logout dupe fix
+
+Every GUI opened by `ViewCommand` is registered with `ViewSessions.registerOnline(targetUuid, gui)` and unregistered on close.
+
+**Why this exists:** `PlayerManager.remove()` (called on disconnect) saves the departing player's data to disk *before* removing their entity — but a viewer's open GUI keeps redirecting into that entity's now-orphaned `PlayerInventory` object, which nothing will ever save again. Taking an item from it duplicates the item when the target reconnects (their `.dat`, saved at disconnect, still has it); adding an item to it silently discards the item. `BotInventory.onPlayerLoggedOut` → `ViewSessions.onPlayerLoggedOut` force-closes every GUI still open on that target the instant they disconnect, before this can happen.
 
 ### Mixin (`PlayerEntityInteractMixin.java`)
 

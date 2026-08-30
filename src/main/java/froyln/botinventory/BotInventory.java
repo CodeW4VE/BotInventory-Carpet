@@ -7,6 +7,7 @@ import net.fabricmc.api.ModInitializer;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.Map;
 
@@ -32,6 +33,11 @@ public class BotInventory implements CarpetExtension, ModInitializer {
             "carpet.rule.viewPlayerInventoryCommand.desc", "Allow /player view inventory command",
             "carpet.rule.viewPlayerEnderchestCommand.desc", "Allow /player view enderchest command"
         );
+    }
+
+    @Override
+    public void onPlayerLoggedOut(ServerPlayerEntity player) {
+        ViewSessions.onPlayerLoggedOut(player);
     }
 
     @Override
