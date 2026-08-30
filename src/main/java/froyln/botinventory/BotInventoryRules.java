@@ -26,4 +26,23 @@ public class BotInventoryRules {
         strict = false
     )
     public static String viewPlayerEnderchestCommand = "false";
+
+    // Off by default: this is new behavior, and the one that writes to disk.
+    @Rule(
+        categories = {COMMAND},
+        options = {"true", "false", "ops", "0", "1", "2", "3", "4"},
+        strict = false
+    )
+    public static String viewOfflinePlayerInventory = "false";
+
+    // Defaults true: getTargetPlayer never distinguished bots from real
+    // players before this rule existed, so any online player was already
+    // viewable with just viewPlayerInventoryCommand. Defaulting false here
+    // would silently break existing setups on upgrade.
+    @Rule(
+        categories = {COMMAND},
+        options = {"true", "false", "ops", "0", "1", "2", "3", "4"},
+        strict = false
+    )
+    public static String viewRealPlayerInventory = "true";
 }
