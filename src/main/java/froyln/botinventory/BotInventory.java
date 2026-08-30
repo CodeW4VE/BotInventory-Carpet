@@ -31,8 +31,15 @@ public class BotInventory implements CarpetExtension, ModInitializer {
         return Map.of(
             "carpet.rule.viewFakePlayerInventoryRightClick.desc", "Allow right click in fake player and see their inventories",
             "carpet.rule.viewPlayerInventoryCommand.desc", "Allow /player view inventory command",
-            "carpet.rule.viewPlayerEnderchestCommand.desc", "Allow /player view enderchest command"
+            "carpet.rule.viewPlayerEnderchestCommand.desc", "Allow /player view enderchest command",
+            "carpet.rule.viewOfflinePlayerInventory.desc", "Allow /player view inventory|enderchest to target offline players, reading and writing their saved data",
+            "carpet.rule.viewRealPlayerInventory.desc", "Allow /player view inventory|enderchest to target real players, not just fake/bot players"
         );
+    }
+
+    @Override
+    public void onPlayerLoggedIn(ServerPlayerEntity player) {
+        ViewSessions.onPlayerLoggedIn(player);
     }
 
     @Override
