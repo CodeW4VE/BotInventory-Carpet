@@ -32,7 +32,9 @@ import java.util.UUID;
  * WriteView, ErrorReporter.Logging) entirely, so this reads and writes the
  * `<uuid>.dat` file directly instead of going through PlayerManager, and
  * uses Entity#readNbt(NbtCompound) / #writeNbt(NbtCompound) instead of
- * #readData(ReadView) / #writeData(WriteView).
+ * #readData(ReadView) / #writeData(WriteView). Armor/offhand also predate
+ * the separate "equipment" NBT key (added ~1.21.5) - here they round-trip
+ * as part of "Inventory" itself, so EDITABLE_KEYS is just the two list keys.
  */
 public final class OfflineInventoryAccess {
     private static final Logger LOGGER = LoggerFactory.getLogger("botinventory-carpet");
@@ -53,7 +55,6 @@ public final class OfflineInventoryAccess {
         UUID uuid;
         boolean isBot;
         if (mojangUuid != null) {
-            // Resolves to a real Mojang account, whether or not it has ever joined.
             uuid = mojangUuid;
             isBot = false;
         } else if (server.isOnlineMode()) {
@@ -94,30 +95,87 @@ public final class OfflineInventoryAccess {
     }
 
     /**
+     * The NBT keys write-back is allowed to touch. "Inventory" is the 36
+     * main+hotbar slots plus armor and offhand (pre-1.21.5, they are encoded
+     * as extra slot indices inside the same list, not a separate key).
+     * "EnderItems" is the ender chest.
+     */
+    private static final String[] EDITABLE_KEYS = {"Inventory", "EnderItems"};
+
+    /**
+     * A cheap, disk-free snapshot of just the ghost's editable NBT (see
+     * EDITABLE_KEYS), for detecting whether anything has changed since the
+     * last write.
+     *
+     * Needed because vanilla's Slot#markDirty() is not a reliable change
+     * signal: Slot#tryTakeStackRange only calls it when a take empties the
+     * slot - a single-item drop (Q) from a stack of more than one bypasses
+     * Inventory#removeStack directly and never marks anything dirty. A
+     * per-slot dirty hook built on markDirty() would miss that edit's
+     * write-back entirely while the *drop itself* (a plain
+     * PlayerEntity#dropItem call, unrelated to markDirty) still happens -
+     * duplicating the item once the target logs back in and loads the
+     * still-unedited save. So this is compared every tick instead of relying
+     * on any mutation hook; see PLAN.md's follow-up race note.
+     */
+    public static NbtCompound currentEditedSnapshot(MinecraftServer server, ServerPlayerEntity ghost) {
+        return extractEditableKeys(ghost);
+    }
+
+    private static NbtCompound extractEditableKeys(ServerPlayerEntity ghost) {
+        NbtCompound edited = ghost.writeNbt(new NbtCompound());
+        NbtCompound snapshot = new NbtCompound();
+        for (String key : EDITABLE_KEYS) {
+            if (edited.get(key) != null) snapshot.put(key, edited.get(key));
+        }
+        return snapshot;
+    }
+
+    /**
      * Writes the ghost's current inventory and ender chest back to disk,
      * merged onto a freshly re-read copy of the target's data so nothing
      * else the player saved since opening is touched or lost.
      *
-     * Returns false without writing if the on-disk data changed since it was
-     * opened (the target logged in, or anything else saved to it) - see
-     * PLAN.md's race-safety notes for why this check exists and why it is
-     * "did the file change", not "is the target online now".
+     * Returns false without writing if the on-disk data has changed since we
+     * last knew about it (the target logged in, or anything else saved to
+     * it) - see PLAN.md's race-safety notes for why this check exists and
+     * why it is "did the file change", not "is the target online now".
+     *
+     * The comparison baseline is `session.lastKnownDiskState`, which this
+     * method advances to what it just wrote on every success - NOT a fixed
+     * snapshot from when the GUI was opened. A session is a sequence of
+     * writes, not one transaction: comparing every write against the
+     * open-time snapshot meant the *second* distinct edit of any session
+     * always saw the disk (correctly changed by the *first* edit) as
+     * "different from expected" and permanently marked the session stale,
+     * silently dropping every edit after the first while the corresponding
+     * drop/etc. side effects (which don't go through this method) still
+     * happened - see PLAN.md's dedicated note on this bug for the full
+     * walkthrough.
      */
     public static boolean writeBack(MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayerEntity ghost) {
         if (session.stale) return false;
 
         Optional<NbtCompound> fresh = readPlayerDat(server, session.entry.getId());
-        if (fresh.isEmpty() || !fresh.get().equals(session.openedSnapshot)) {
+        if (fresh.isEmpty() || !fresh.get().equals(session.lastKnownDiskState)) {
             session.stale = true;
             return false;
         }
 
         NbtCompound merged = fresh.get().copy();
-        NbtCompound edited = ghost.writeNbt(new NbtCompound());
-        if (edited.get("Inventory") != null) merged.put("Inventory", edited.get("Inventory"));
-        if (edited.get("EnderItems") != null) merged.put("EnderItems", edited.get("EnderItems"));
+        NbtCompound edited = extractEditableKeys(ghost);
+        for (String key : EDITABLE_KEYS) {
+            var value = edited.get(key);
+            if (value != null) {
+                merged.put(key, value);
+            } else {
+                merged.remove(key);
+            }
+        }
 
-        return writeToDisk(server, session.entry.getId(), merged);
+        if (!writeToDisk(server, session.entry.getId(), merged)) return false;
+        session.lastKnownDiskState = merged;
+        return true;
     }
 
     private static boolean writeToDisk(MinecraftServer server, UUID uuid, NbtCompound compound) {
