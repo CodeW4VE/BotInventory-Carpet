@@ -16,6 +16,9 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
+
+import java.util.UUID;
+
 import static net.minecraft.server.command.CommandManager.literal;
 
 public class ViewCommand {
@@ -62,7 +65,7 @@ public class ViewCommand {
     }
 
     public static void openInventory(ServerPlayerEntity player, ServerPlayerEntity targetPlayer) {
-        SimpleGui gui = new SimpleGui(ScreenHandlerType.GENERIC_9X5, player, false);
+        OnlineViewGui gui = new OnlineViewGui(ScreenHandlerType.GENERIC_9X5, player, targetPlayer.getUuid());
         gui.setTitle(targetPlayer.getName());
 
         var targetInv = targetPlayer.getInventory();
@@ -78,6 +81,7 @@ public class ViewCommand {
             gui.setSlot(i, barrier);
         }
 
+        ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
         gui.open();
     }
 
@@ -126,7 +130,7 @@ public class ViewCommand {
             default -> ScreenHandlerType.GENERIC_9X3;
         };
 
-        SimpleGui gui = new SimpleGui(screenHandlerType, player, false);
+        OnlineViewGui gui = new OnlineViewGui(screenHandlerType, player, targetPlayer.getUuid());
         gui.setTitle(targetPlayer.getName());
 
         for (int i = 0; i < enderChest.size(); i++) {
@@ -135,7 +139,24 @@ public class ViewCommand {
             gui.setSlotRedirect(i, new Slot(enderChest, i, x, y));
         }
 
+        ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
         gui.open();
         return 1;
+    }
+
+    /** Closed by ViewSessions when the target logs out, so it never edits an orphaned inventory (see PLAN.md step 0). */
+    private static final class OnlineViewGui extends SimpleGui {
+        private final UUID target;
+
+        OnlineViewGui(ScreenHandlerType<?> type, ServerPlayerEntity viewer, UUID target) {
+            super(type, viewer, false);
+            this.target = target;
+        }
+
+        @Override
+        public void onClose() {
+            super.onClose();
+            ViewSessions.unregisterOnline(target, this);
+        }
     }
 }
