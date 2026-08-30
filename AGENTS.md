@@ -92,3 +92,9 @@ Flow:
 ### Slots are not copy-protected
 
 Inventory and ender chest slots use vanilla `Slot` with redirect, meaning the viewer **can** take and modify items in the viewed inventory. This is the current behavior — not a bug in scope.
+
+## Maintenance rules for AI agents
+
+- Important change (new rule, new command, new mixin, behavior change, new file, dependency change) → update this doc same turn, section that describe it.
+- Each important change → propose local commit after edit. **Ask user first**, never commit without confirm.
+- Trivial change (typo, formatting, comment) → no doc update, no commit needed unless user ask.
