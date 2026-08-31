@@ -20,4 +20,7 @@ run/
 runs/
 
 # Local plan (not shared)
-PLAN.md
+PLAN*.md
+
+# Local multi-version build output (not shared)
+dist/
