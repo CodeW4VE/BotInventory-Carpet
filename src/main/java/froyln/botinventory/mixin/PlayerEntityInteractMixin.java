@@ -20,7 +20,7 @@ public abstract class PlayerEntityInteractMixin {
     private void onInteract(Entity target, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
         if (target instanceof EntityPlayerMPFake fakePlayer) {
             if ((Object) this instanceof ServerPlayerEntity viewer) {
-                if (ViewCommand.isPlayerAllowed(viewer, BotInventoryRules.viewFakePlayerInventoryRightClick)) {
+                if (ViewCommand.isViewAllowed(viewer.getCommandSource(), BotInventoryRules.viewFakePlayerInventoryRightClick)) {
                     ViewCommand.openInventory(viewer, fakePlayer);
                     cir.setReturnValue(ActionResult.SUCCESS);
                 }
