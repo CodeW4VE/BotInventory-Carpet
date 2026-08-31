@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
 import net.minecraft.inventory.EnderChestInventory;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.ScreenHandlerType;
@@ -19,6 +20,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
 
 import java.util.Optional;
+import java.util.function.IntPredicate;
 
 import static net.minecraft.server.command.CommandManager.literal;
 
@@ -60,14 +62,19 @@ public class ViewCommand {
         playerArgNode.addChild(viewNode);
     }
 
-    public static boolean isPlayerAllowed(ServerPlayerEntity player, String ruleValue) {
+    /** Also used directly by the right-click mixin (bot-only, always online) via `player.getCommandSource()`. */
+    public static boolean isViewAllowed(ServerCommandSource source, String ruleValue) {
+        return checkRule(ruleValue, source::hasPermissionLevel);
+    }
+
+    private static boolean checkRule(String ruleValue, IntPredicate permCheck) {
         return switch (ruleValue) {
             case "true" -> true;
             case "false" -> false;
-            case "ops" -> player.getCommandSource().hasPermissionLevel(2);
+            case "ops" -> permCheck.test(2);
             default -> {
                 try {
-                    yield player.getCommandSource().hasPermissionLevel(Integer.parseInt(ruleValue));
+                    yield permCheck.test(Integer.parseInt(ruleValue));
                 } catch (NumberFormatException e) {
                     yield false;
                 }
@@ -78,36 +85,25 @@ public class ViewCommand {
     public static void openInventory(ServerPlayerEntity player, ServerPlayerEntity targetPlayer) {
         OnlineViewGui gui = new OnlineViewGui(ScreenHandlerType.GENERIC_9X5, player, targetPlayer.getUuid());
         gui.setTitle(targetPlayer.getName());
-
-        var targetInv = targetPlayer.getInventory();
-        for (int i = 0; i < DISPLAYED_INVENTORY_SIZE; i++) {
-            int x = 8 + (i % 9) * 18;
-            int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(targetInv, i, x, y));
-        }
-
-        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
-        for (int i = DISPLAYED_INVENTORY_SIZE; i < gui.getVirtualSize(); i++) {
-            gui.setSlot(i, barrier);
-        }
-
+        redirectGrid(gui, targetPlayer.getInventory(), DISPLAYED_INVENTORY_SIZE);
+        fillBarrier(gui, DISPLAYED_INVENTORY_SIZE);
         ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
         gui.open();
     }
 
-    private static boolean isViewAllowed(ServerCommandSource source, String ruleValue) {
-        return switch (ruleValue) {
-            case "true" -> true;
-            case "false" -> false;
-            case "ops" -> source.hasPermissionLevel(2);
-            default -> {
-                try {
-                    yield source.hasPermissionLevel(Integer.parseInt(ruleValue));
-                } catch (NumberFormatException e) {
-                    yield false;
-                }
-            }
-        };
+    private static void redirectGrid(SimpleGui gui, Inventory inv, int size) {
+        for (int i = 0; i < size; i++) {
+            int x = 8 + (i % 9) * 18;
+            int y = 18 + (i / 9) * 18;
+            gui.setSlotRedirect(i, new Slot(inv, i, x, y));
+        }
+    }
+
+    private static void fillBarrier(SimpleGui gui, int from) {
+        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
+        for (int i = from; i < gui.getVirtualSize(); i++) {
+            gui.setSlot(i, barrier);
+        }
     }
 
     /** An online target, or a detached "ghost" entity holding an offline target's saved data. */
@@ -180,18 +176,8 @@ public class ViewCommand {
         gui.setTitle(ghost.getName());
         session.gui = gui;
 
-        var ghostInv = ghost.getInventory();
-        for (int i = 0; i < DISPLAYED_INVENTORY_SIZE; i++) {
-            int x = 8 + (i % 9) * 18;
-            int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(ghostInv, i, x, y));
-        }
-
-        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
-        for (int i = DISPLAYED_INVENTORY_SIZE; i < gui.getVirtualSize(); i++) {
-            gui.setSlot(i, barrier);
-        }
-
+        redirectGrid(gui, ghost.getInventory(), DISPLAYED_INVENTORY_SIZE);
+        fillBarrier(gui, DISPLAYED_INVENTORY_SIZE);
         gui.open();
     }
 
@@ -222,13 +208,7 @@ public class ViewCommand {
     private static void openEnderchestOnline(ServerPlayerEntity viewer, ServerPlayerEntity targetPlayer, EnderChestInventory enderChest, ScreenHandlerType<?> type) {
         OnlineViewGui gui = new OnlineViewGui(type, viewer, targetPlayer.getUuid());
         gui.setTitle(targetPlayer.getName());
-
-        for (int i = 0; i < enderChest.size(); i++) {
-            int x = 8 + (i % 9) * 18;
-            int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(enderChest, i, x, y));
-        }
-
+        redirectGrid(gui, enderChest, enderChest.size());
         ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
         gui.open();
     }
@@ -237,13 +217,7 @@ public class ViewCommand {
         OfflineViewGui gui = new OfflineViewGui(type, viewer, server, session, ghost);
         gui.setTitle(ghost.getName());
         session.gui = gui;
-
-        for (int i = 0; i < enderChest.size(); i++) {
-            int x = 8 + (i % 9) * 18;
-            int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(enderChest, i, x, y));
-        }
-
+        redirectGrid(gui, enderChest, enderChest.size());
         gui.open();
     }
 
