@@ -135,7 +135,7 @@ Intercepts `PlayerEntity.interact(Entity target, Hand)` — called on the **clic
 Flow:
 1. Player right-clicks a fake player → `PlayerEntity.interact(target, hand)` fires
 2. Mixin checks `target instanceof EntityPlayerMPFake`
-3. Checks `viewFakePlayerInventoryRightClick` rule via `ViewCommand.isPlayerAllowed()`
+3. Checks `viewFakePlayerInventoryRightClick` rule via `ViewCommand.isViewAllowed(viewer.getCommandSource(), rule)`
 4. Opens inventory via `ViewCommand.openInventory()` (same GUI as `/player view inventory`)
 5. Returns `ActionResult.SUCCESS` to cancel normal right-click behavior (armor swap, etc.)
 
