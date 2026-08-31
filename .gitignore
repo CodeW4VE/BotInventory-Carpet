@@ -24,3 +24,4 @@ PLAN*.md
 
 # Local multi-version build output (not shared)
 dist/
+build-all.sh
