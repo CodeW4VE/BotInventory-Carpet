@@ -28,11 +28,9 @@ import static net.minecraft.commands.Commands.literal;
 
 public class ViewCommand {
     /**
-     * Real usable player inventory slots: 36 main+hotbar, 4 armor, 1 offhand.
-     * NOT the same as Inventory#getContainerSize(), which is 43 in 1.21.11 - it
-     * also counts the BODY and SADDLE equipment slots (indices 41/42), added
-     * for other entity types but present in every player's slot map too.
-     * Those aren't meaningful for a player and shouldn't be shown as editable.
+     * Real usable player slots (36 main+hotbar, 4 armor, 1 offhand) — NOT
+     * Inventory#getContainerSize() (43), which also counts non-editable
+     * BODY/SADDLE equipment slots.
      */
     private static final int DISPLAYED_INVENTORY_SIZE = 41;
 
@@ -251,13 +249,7 @@ public class ViewCommand {
         }
     }
 
-    /**
-     * Offline GUI: writes back to disk whenever the ghost's inventory
-     * actually changes, checked every tick rather than on a per-slot mutation
-     * hook. Slot#markDirty() is not a reliable "something changed" signal -
-     * see the comment on OfflineInventoryAccess#currentEditedSnapshot for why
-     * a per-slot hook missed single-item drops and caused a duplication bug.
-     */
+    /** Offline GUI: writes back to disk whenever the ghost's inventory actually changes, polled every tick. */
     private static final class OfflineViewGui extends SimpleGui {
         private final MinecraftServer server;
         private final ViewSessions.OfflineSession session;
