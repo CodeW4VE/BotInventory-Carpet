@@ -8,44 +8,44 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import eu.pb4.sgui.api.elements.GuiElementBuilder;
 import eu.pb4.sgui.api.gui.SimpleGui;
-import net.minecraft.command.permission.Permission;
-import net.minecraft.command.permission.PermissionLevel;
-import net.minecraft.inventory.EnderChestInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.text.Text;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionCheck;
+import net.minecraft.world.Container;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.PlayerEnderChestContainer;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Items;
 
 import java.util.Optional;
 import java.util.function.IntPredicate;
 
-import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.commands.Commands.literal;
 
 public class ViewCommand {
     /**
      * Real usable player inventory slots: 36 main+hotbar, 4 armor, 1 offhand.
-     * NOT the same as PlayerInventory#size(), which is 43 in 1.21.11 - it also
-     * counts the BODY and SADDLE equipment slots (indices 41/42), added for
-     * other entity types but present in every player's slot map too. Those
-     * aren't meaningful for a player and shouldn't be shown as editable.
+     * NOT the same as Inventory#getContainerSize(), which is 43 in 1.21.11 - it
+     * also counts the BODY and SADDLE equipment slots (indices 41/42), added
+     * for other entity types but present in every player's slot map too.
+     * Those aren't meaningful for a player and shouldn't be shown as editable.
      */
     private static final int DISPLAYED_INVENTORY_SIZE = 41;
 
     private static final SimpleCommandExceptionType OFFLINE_VIEWING_DISABLED =
-        new SimpleCommandExceptionType(Text.literal("Player not online, and offline viewing is disabled (viewOfflinePlayerInventory rule)"));
+        new SimpleCommandExceptionType(Component.literal("Player not online, and offline viewing is disabled (viewOfflinePlayerInventory rule)"));
     private static final SimpleCommandExceptionType NO_SAVED_DATA =
-        new SimpleCommandExceptionType(Text.literal("Player not online, and has no saved data (never joined this server)"));
+        new SimpleCommandExceptionType(Component.literal("Player not online, and has no saved data (never joined this server)"));
     private static final SimpleCommandExceptionType NOT_ALLOWED_REAL_PLAYER =
-        new SimpleCommandExceptionType(Text.literal("Not allowed to view a real player's inventory"));
+        new SimpleCommandExceptionType(Component.literal("Not allowed to view a real player's inventory"));
     private static final SimpleCommandExceptionType ALREADY_OPEN =
-        new SimpleCommandExceptionType(Text.literal("Someone else is already viewing this player's saved data"));
+        new SimpleCommandExceptionType(Component.literal("Someone else is already viewing this player's saved data"));
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         var playerNode = dispatcher.getRoot().getChild("player");
         if (playerNode == null) return;
 
@@ -64,9 +64,21 @@ public class ViewCommand {
         playerArgNode.addChild(viewNode);
     }
 
-    /** Also used directly by the right-click mixin (bot-only, always online) via `player.getCommandSource()`. */
-    public static boolean isViewAllowed(ServerCommandSource source, String ruleValue) {
-        return checkRule(ruleValue, level -> source.getPermissions().hasPermission(new Permission.Level(PermissionLevel.fromLevel(level))));
+    /** Also used directly by the right-click mixin (bot-only, always online) via `player.createCommandSourceStack()`. */
+    public static boolean isViewAllowed(CommandSourceStack source, String ruleValue) {
+        return checkRule(ruleValue, level -> checkPermissionLevel(source, level));
+    }
+
+    private static boolean checkPermissionLevel(CommandSourceStack source, int level) {
+        PermissionCheck check = switch (level) {
+            case 0 -> Commands.LEVEL_ALL;
+            case 1 -> Commands.LEVEL_MODERATORS;
+            case 2 -> Commands.LEVEL_GAMEMASTERS;
+            case 3 -> Commands.LEVEL_ADMINS;
+            case 4 -> Commands.LEVEL_OWNERS;
+            default -> null;
+        };
+        return check != null && check.check(source.permissions());
     }
 
     private static boolean checkRule(String ruleValue, IntPredicate permCheck) {
@@ -85,32 +97,32 @@ public class ViewCommand {
     }
 
     /** Opens the online, live-redirect inventory GUI. Also used directly by the right-click mixin (bot-only, always online). */
-    public static void openInventory(ServerPlayerEntity player, ServerPlayerEntity targetPlayer) {
-        OnlineViewGui gui = new OnlineViewGui(ScreenHandlerType.GENERIC_9X5, player, targetPlayer.getUuid());
+    public static void openInventory(ServerPlayer player, ServerPlayer targetPlayer) {
+        OnlineViewGui gui = new OnlineViewGui(MenuType.GENERIC_9x5, player, targetPlayer.getUUID());
         gui.setTitle(targetPlayer.getName());
         redirectGrid(gui, targetPlayer.getInventory(), DISPLAYED_INVENTORY_SIZE);
         fillBarrier(gui, DISPLAYED_INVENTORY_SIZE);
-        ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
+        ViewSessions.registerOnline(targetPlayer.getUUID(), gui);
         gui.open();
     }
 
-    private static void redirectGrid(SimpleGui gui, Inventory inv, int size) {
+    private static void redirectGrid(SimpleGui gui, Container inv, int size) {
         for (int i = 0; i < size; i++) {
             int x = 8 + (i % 9) * 18;
             int y = 18 + (i / 9) * 18;
-            gui.setSlotRedirect(i, new Slot(inv, i, x, y));
+            gui.setSlot(i, new Slot(inv, i, x, y));
         }
     }
 
     private static void fillBarrier(SimpleGui gui, int from) {
-        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Text.literal("§cNot available")).build();
+        var barrier = new GuiElementBuilder(Items.BARRIER).setName(Component.literal("§cNot available")).build();
         for (int i = from; i < gui.getVirtualSize(); i++) {
             gui.setSlot(i, barrier);
         }
     }
 
     /** An online target, or a detached "ghost" entity holding an offline target's saved data. */
-    private record Resolved(ServerPlayerEntity player, ViewSessions.OfflineSession offlineSession) {
+    private record Resolved(ServerPlayer player, ViewSessions.OfflineSession offlineSession) {
     }
 
     /**
@@ -119,12 +131,12 @@ public class ViewCommand {
      * guard (offline only). One place so both subcommands enforce the same
      * checks - see PLAN.md's rule matrix.
      */
-    private static Resolved resolveTarget(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerCommandSource source = context.getSource();
+    private static Resolved resolveTarget(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
         MinecraftServer server = source.getServer();
         String name = StringArgumentType.getString(context, "player");
 
-        ServerPlayerEntity online = server.getPlayerManager().getPlayer(name);
+        ServerPlayer online = server.getPlayerList().getPlayerByName(name);
         if (online != null) {
             boolean isBot = online instanceof EntityPlayerMPFake;
             if (!isBot && !isViewAllowed(source, BotInventoryRules.viewRealPlayerInventory)) {
@@ -152,7 +164,7 @@ public class ViewCommand {
             throw ALREADY_OPEN.create();
         }
 
-        ServerPlayerEntity ghost;
+        ServerPlayer ghost;
         try {
             ghost = OfflineInventoryAccess.createGhost(server, target.entry(), target.data());
         } catch (RuntimeException e) {
@@ -162,8 +174,8 @@ public class ViewCommand {
         return new Resolved(ghost, session);
     }
 
-    private static int viewInventory(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerPlayerEntity viewer = context.getSource().getPlayerOrThrow();
+    private static int viewInventory(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer viewer = context.getSource().getPlayerOrException();
         Resolved target = resolveTarget(context);
 
         if (target.offlineSession() == null) {
@@ -174,53 +186,52 @@ public class ViewCommand {
         return 1;
     }
 
-    private static void openOfflineInventory(MinecraftServer server, ServerPlayerEntity viewer, ServerPlayerEntity ghost, ViewSessions.OfflineSession session) {
-        OfflineViewGui gui = new OfflineViewGui(ScreenHandlerType.GENERIC_9X5, viewer, server, session, ghost);
+    private static void openOfflineInventory(MinecraftServer server, ServerPlayer viewer, ServerPlayer ghost, ViewSessions.OfflineSession session) {
+        OfflineViewGui gui = new OfflineViewGui(MenuType.GENERIC_9x5, viewer, server, session, ghost);
         gui.setTitle(ghost.getName());
         session.gui = gui;
-
         redirectGrid(gui, ghost.getInventory(), DISPLAYED_INVENTORY_SIZE);
         fillBarrier(gui, DISPLAYED_INVENTORY_SIZE);
         gui.open();
     }
 
-    private static int viewEnderchest(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        ServerPlayerEntity viewer = context.getSource().getPlayerOrThrow();
+    private static int viewEnderchest(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer viewer = context.getSource().getPlayerOrException();
         Resolved target = resolveTarget(context);
         MinecraftServer server = context.getSource().getServer();
 
-        EnderChestInventory enderChest = target.player().getEnderChestInventory();
-        ScreenHandlerType<?> screenHandlerType = switch (enderChest.size()) {
-            case 9 -> ScreenHandlerType.GENERIC_9X1;
-            case 18 -> ScreenHandlerType.GENERIC_9X2;
-            case 27 -> ScreenHandlerType.GENERIC_9X3;
-            case 36 -> ScreenHandlerType.GENERIC_9X4;
-            case 45 -> ScreenHandlerType.GENERIC_9X5;
-            case 54 -> ScreenHandlerType.GENERIC_9X6;
-            default -> ScreenHandlerType.GENERIC_9X3;
+        PlayerEnderChestContainer enderChest = target.player().getEnderChestInventory();
+        MenuType<?> menuType = switch (enderChest.getContainerSize()) {
+            case 9 -> MenuType.GENERIC_9x1;
+            case 18 -> MenuType.GENERIC_9x2;
+            case 27 -> MenuType.GENERIC_9x3;
+            case 36 -> MenuType.GENERIC_9x4;
+            case 45 -> MenuType.GENERIC_9x5;
+            case 54 -> MenuType.GENERIC_9x6;
+            default -> MenuType.GENERIC_9x3;
         };
 
         if (target.offlineSession() == null) {
-            openEnderchestOnline(viewer, target.player(), enderChest, screenHandlerType);
+            openEnderchestOnline(viewer, target.player(), enderChest, menuType);
         } else {
-            openEnderchestOffline(server, viewer, target.player(), enderChest, screenHandlerType, target.offlineSession());
+            openEnderchestOffline(server, viewer, target.player(), enderChest, menuType, target.offlineSession());
         }
         return 1;
     }
 
-    private static void openEnderchestOnline(ServerPlayerEntity viewer, ServerPlayerEntity targetPlayer, EnderChestInventory enderChest, ScreenHandlerType<?> type) {
-        OnlineViewGui gui = new OnlineViewGui(type, viewer, targetPlayer.getUuid());
+    private static void openEnderchestOnline(ServerPlayer viewer, ServerPlayer targetPlayer, PlayerEnderChestContainer enderChest, MenuType<?> type) {
+        OnlineViewGui gui = new OnlineViewGui(type, viewer, targetPlayer.getUUID());
         gui.setTitle(targetPlayer.getName());
-        redirectGrid(gui, enderChest, enderChest.size());
-        ViewSessions.registerOnline(targetPlayer.getUuid(), gui);
+        redirectGrid(gui, enderChest, enderChest.getContainerSize());
+        ViewSessions.registerOnline(targetPlayer.getUUID(), gui);
         gui.open();
     }
 
-    private static void openEnderchestOffline(MinecraftServer server, ServerPlayerEntity viewer, ServerPlayerEntity ghost, EnderChestInventory enderChest, ScreenHandlerType<?> type, ViewSessions.OfflineSession session) {
+    private static void openEnderchestOffline(MinecraftServer server, ServerPlayer viewer, ServerPlayer ghost, PlayerEnderChestContainer enderChest, MenuType<?> type, ViewSessions.OfflineSession session) {
         OfflineViewGui gui = new OfflineViewGui(type, viewer, server, session, ghost);
         gui.setTitle(ghost.getName());
         session.gui = gui;
-        redirectGrid(gui, enderChest, enderChest.size());
+        redirectGrid(gui, enderChest, enderChest.getContainerSize());
         gui.open();
     }
 
@@ -228,14 +239,14 @@ public class ViewCommand {
     private static final class OnlineViewGui extends SimpleGui {
         private final java.util.UUID target;
 
-        OnlineViewGui(ScreenHandlerType<?> type, ServerPlayerEntity viewer, java.util.UUID target) {
+        OnlineViewGui(MenuType<?> type, ServerPlayer viewer, java.util.UUID target) {
             super(type, viewer, false);
             this.target = target;
         }
 
         @Override
-        public void onClose() {
-            super.onClose();
+        public void onManualClose() {
+            super.onManualClose();
             ViewSessions.unregisterOnline(target, this);
         }
     }
@@ -250,10 +261,10 @@ public class ViewCommand {
     private static final class OfflineViewGui extends SimpleGui {
         private final MinecraftServer server;
         private final ViewSessions.OfflineSession session;
-        private final ServerPlayerEntity ghost;
-        private NbtCompound lastWritten;
+        private final ServerPlayer ghost;
+        private CompoundTag lastWritten;
 
-        OfflineViewGui(ScreenHandlerType<?> type, ServerPlayerEntity viewer, MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayerEntity ghost) {
+        OfflineViewGui(MenuType<?> type, ServerPlayer viewer, MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayer ghost) {
             super(type, viewer, false);
             this.server = server;
             this.session = session;
@@ -268,8 +279,8 @@ public class ViewCommand {
         }
 
         @Override
-        public void onClose() {
-            super.onClose();
+        public void onManualClose() {
+            super.onManualClose();
             syncIfChanged();
             ViewSessions.unregisterOffline(session.entry.id(), session);
         }
@@ -277,13 +288,13 @@ public class ViewCommand {
         private void syncIfChanged() {
             if (session.stale) return;
 
-            NbtCompound current = OfflineInventoryAccess.currentEditedSnapshot(server, ghost);
+            CompoundTag current = OfflineInventoryAccess.currentEditedSnapshot(server, ghost);
             if (current.equals(lastWritten)) return;
 
             if (OfflineInventoryAccess.writeBack(server, session, ghost)) {
                 lastWritten = current;
             } else {
-                getPlayer().sendMessage(Text.literal(
+                getPlayer().sendSystemMessage(Component.literal(
                     "Your last changes to " + session.entry.name() + "'s inventory were not saved."
                 ));
             }

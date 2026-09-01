@@ -1,19 +1,18 @@
 package froyln.botinventory;
 
 import com.mojang.authlib.GameProfile;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerConfigEntry;
-import net.minecraft.server.ServerConfigHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.storage.NbtReadView;
-import net.minecraft.storage.NbtWriteView;
-import net.minecraft.storage.ReadView;
-import net.minecraft.util.ErrorReporter;
-import net.minecraft.util.Uuids;
-import net.minecraft.util.WorldSavePath;
+import net.minecraft.server.level.ClientInformation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.NameAndId;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +28,8 @@ import java.util.UUID;
  * inventory can be viewed and edited while they are offline, without
  * spawning them. See PLAN.md for the write-back design rationale (merge
  * only the Inventory/EnderItems keys — never a full entity round trip,
- * since PlayerEntity#writeData writes several fields, such as Dimension,
- * from the entity's live state rather than from what was read).
+ * since Entity#save writes several fields, such as Dimension, from the
+ * entity's live state rather than from what was read).
  */
 public final class OfflineInventoryAccess {
     private static final Logger LOGGER = LoggerFactory.getLogger("botinventory-carpet");
@@ -38,7 +37,7 @@ public final class OfflineInventoryAccess {
     private OfflineInventoryAccess() {
     }
 
-    public record Target(PlayerConfigEntry entry, NbtCompound data, boolean isBot) {
+    public record Target(NameAndId entry, CompoundTag data, boolean isBot) {
     }
 
     /**
@@ -47,48 +46,47 @@ public final class OfflineInventoryAccess {
      * not an empty inventory.
      */
     public static Optional<Target> resolve(MinecraftServer server, String name) {
-        UUID mojangUuid = ServerConfigHandler.getPlayerUuidByName(server, name);
+        Optional<NameAndId> mojangEntry = server.services().nameToIdCache().get(name);
         UUID uuid;
         boolean isBot;
-        if (mojangUuid != null) {
-            uuid = mojangUuid;
+        if (mojangEntry.isPresent()) {
+            // Resolves to a real Mojang account, whether or not it has ever joined.
+            uuid = mojangEntry.get().id();
             isBot = false;
-        } else if (server.isOnlineMode()) {
+        } else if (server.usesAuthentication()) {
             // Online-mode server verifies real accounts; no such account means this is a fake player.
-            uuid = Uuids.getOfflinePlayerUuid(name);
+            uuid = UUIDUtil.createOfflinePlayerUUID(name);
             isBot = true;
         } else {
             // Offline-mode server: every player has an offline UUID, so a bot and
             // a real account are indistinguishable. Fail safe to "real".
-            uuid = Uuids.getOfflinePlayerUuid(name);
+            uuid = UUIDUtil.createOfflinePlayerUUID(name);
             isBot = false;
         }
 
-        PlayerConfigEntry entry = new PlayerConfigEntry(uuid, name);
-        return server.getPlayerManager().loadPlayerData(entry).map(nbt -> new Target(entry, nbt, isBot));
+        NameAndId entry = new NameAndId(uuid, name);
+        return server.getPlayerList().loadPlayerData(entry).map(nbt -> new Target(entry, nbt, isBot));
     }
 
     /**
-     * Builds a detached ServerPlayerEntity that is never added to the world
+     * Builds a detached ServerPlayer that is never added to the world
      * or the player list - a deserialization target only - with the given
      * saved data applied.
      */
-    public static ServerPlayerEntity createGhost(MinecraftServer server, PlayerConfigEntry entry, NbtCompound data) {
+    public static ServerPlayer createGhost(MinecraftServer server, NameAndId entry, CompoundTag data) {
         GameProfile profile = new GameProfile(entry.id(), entry.name());
-        ServerPlayerEntity ghost = new ServerPlayerEntity(server, server.getOverworld(), profile, SyncedClientOptions.createDefault());
-        try (ErrorReporter.Logging reporter = new ErrorReporter.Logging(LOGGER)) {
-            ReadView view = NbtReadView.create(reporter, server.getRegistryManager(), data);
-            ghost.readData(view);
-        }
+        ServerPlayer ghost = new ServerPlayer(server, server.overworld(), profile, ClientInformation.createDefault());
+        ValueInput view = TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), data);
+        ghost.load(view);
         return ghost;
     }
 
     /**
      * The NBT keys write-back is allowed to touch. "Inventory" is the 36
      * main+hotbar slots, "EnderItems" the ender chest. Armor and offhand are
-     * NOT part of "Inventory" - PlayerInventory#readData only accepts slots
+     * NOT part of "Inventory" - PlayerInventory#load only accepts slots
      * below main.size() (36) - they live in LivingEntity's own "equipment"
-     * key instead (LivingEntity#EQUIPMENT_KEY, backed by a separate
+     * key instead (LivingEntity#TAG_EQUIPMENT, backed by a separate
      * `equipment` field, not the 36-slot list). Missing that key here doesn't
      * fail loudly: the edit applies fine to the in-memory ghost, GUI-side, and
      * only silently never reaches disk - discovered because it produced the
@@ -113,17 +111,15 @@ public final class OfflineInventoryAccess {
      * still-unedited save. So this is compared every tick instead of relying
      * on any mutation hook; see PLAN.md's follow-up race note.
      */
-    public static NbtCompound currentEditedSnapshot(MinecraftServer server, ServerPlayerEntity ghost) {
-        try (ErrorReporter.Logging reporter = new ErrorReporter.Logging(LOGGER)) {
-            return extractEditableKeys(server, ghost, reporter);
-        }
+    public static CompoundTag currentEditedSnapshot(MinecraftServer server, ServerPlayer ghost) {
+        return extractEditableKeys(server, ghost);
     }
 
-    private static NbtCompound extractEditableKeys(MinecraftServer server, ServerPlayerEntity ghost, ErrorReporter.Logging reporter) {
-        NbtWriteView editedView = NbtWriteView.create(reporter, server.getRegistryManager());
-        ghost.writeData(editedView);
-        NbtCompound edited = editedView.getNbt();
-        NbtCompound snapshot = new NbtCompound();
+    private static CompoundTag extractEditableKeys(MinecraftServer server, ServerPlayer ghost) {
+        TagValueOutput editedView = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, server.registryAccess());
+        ghost.save(editedView);
+        CompoundTag edited = editedView.buildResult();
+        CompoundTag snapshot = new CompoundTag();
         for (String key : EDITABLE_KEYS) {
             if (edited.get(key) != null) snapshot.put(key, edited.get(key));
         }
@@ -152,29 +148,27 @@ public final class OfflineInventoryAccess {
      * happened - see PLAN.md's dedicated note on this bug for the full
      * walkthrough.
      */
-    public static boolean writeBack(MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayerEntity ghost) {
+    public static boolean writeBack(MinecraftServer server, ViewSessions.OfflineSession session, ServerPlayer ghost) {
         if (session.stale) return false;
 
-        Optional<NbtCompound> fresh = server.getPlayerManager().loadPlayerData(session.entry);
+        Optional<CompoundTag> fresh = server.getPlayerList().loadPlayerData(session.entry);
         if (fresh.isEmpty() || !fresh.get().equals(session.lastKnownDiskState)) {
             session.stale = true;
             return false;
         }
 
-        NbtCompound merged = fresh.get().copy();
-        try (ErrorReporter.Logging reporter = new ErrorReporter.Logging(LOGGER)) {
-            NbtCompound edited = extractEditableKeys(server, ghost, reporter);
-            for (String key : EDITABLE_KEYS) {
-                // "equipment" is only written when non-empty (LivingEntity#writeCustomData),
-                // unlike Inventory/EnderItems which are always present - so a null here can
-                // mean "now empty", not just "unchanged". Mirror absence too, or unequipping
-                // the last piece of gear would leave the old equipment stuck on disk.
-                var value = edited.get(key);
-                if (value != null) {
-                    merged.put(key, value);
-                } else {
-                    merged.remove(key);
-                }
+        CompoundTag merged = fresh.get().copy();
+        CompoundTag edited = extractEditableKeys(server, ghost);
+        for (String key : EDITABLE_KEYS) {
+            // "equipment" is only written when non-empty (LivingEntity#addAdditionalSaveData),
+            // unlike Inventory/EnderItems which are always present - so a null here can
+            // mean "now empty", not just "unchanged". Mirror absence too, or unequipping
+            // the last piece of gear would leave the old equipment stuck on disk.
+            var value = edited.get(key);
+            if (value != null) {
+                merged.put(key, value);
+            } else {
+                merged.remove(key);
             }
         }
 
@@ -183,8 +177,8 @@ public final class OfflineInventoryAccess {
         return true;
     }
 
-    private static boolean writeToDisk(MinecraftServer server, UUID uuid, NbtCompound compound) {
-        Path dir = server.getSavePath(WorldSavePath.PLAYERDATA);
+    private static boolean writeToDisk(MinecraftServer server, UUID uuid, CompoundTag compound) {
+        Path dir = server.getWorldPath(LevelResource.PLAYER_DATA_DIR);
         Path finalPath = dir.resolve(uuid + ".dat");
         try {
             Path tempPath = Files.createTempFile(dir, uuid + "-", ".dat");

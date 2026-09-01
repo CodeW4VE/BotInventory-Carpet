@@ -4,10 +4,10 @@ import carpet.CarpetExtension;
 import carpet.CarpetServer;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Map;
 
@@ -38,17 +38,17 @@ public class BotInventory implements CarpetExtension, ModInitializer {
     }
 
     @Override
-    public void onPlayerLoggedIn(ServerPlayerEntity player) {
+    public void onPlayerLoggedIn(ServerPlayer player) {
         ViewSessions.onPlayerLoggedIn(player);
     }
 
     @Override
-    public void onPlayerLoggedOut(ServerPlayerEntity player) {
+    public void onPlayerLoggedOut(ServerPlayer player) {
         ViewSessions.onPlayerLoggedOut(player);
     }
 
     @Override
-    public void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess commandBuildContext) {
+    public void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext commandBuildContext) {
         ViewCommand.register(dispatcher);
     }
 
