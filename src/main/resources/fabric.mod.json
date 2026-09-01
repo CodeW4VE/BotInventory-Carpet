@@ -12,8 +12,8 @@
   "environment": "*",
   "depends": {
     "fabricloader": ">=0.15.0",
-    "minecraft": "~1.21.11",
-    "java": ">=17",
+    "minecraft": "~26.1",
+    "java": ">=25",
     "carpet": "*"
   },
   "entrypoints": {
