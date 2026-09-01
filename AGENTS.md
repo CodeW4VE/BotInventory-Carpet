@@ -148,4 +148,5 @@ Inventory and ender chest slots use vanilla `Slot` with redirect, meaning the vi
 - Important change (new rule, new command, new mixin, behavior change, new file, dependency change) → update this doc same turn, section that describe it.
 - Each important change → propose local commit after edit. **Ask user first**, never commit without confirm.
 - Trivial change (typo, formatting, comment) → no doc update, no commit needed unless user ask.
-- Do not add unnecessary comments to the code. Each comment costs tokens with no return; only write a comment when it explains something non-obvious that the code itself can't convey.
+- Do not add unnecessary comments to the code. Each comment costs tokens with no return; only write a comment when it explains something non-obvious that the code itself can't convey. Keep it to 1-3 lines — never a multi-paragraph essay. If a fix needs a longer story, put it in the commit message, not the code.
+- Never add AI/assistant/session attribution to commit messages — no "Co-Authored-By", no session links, no tool names. Commit messages describe the change only.
