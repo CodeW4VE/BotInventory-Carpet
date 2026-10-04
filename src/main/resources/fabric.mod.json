@@ -3,7 +3,7 @@
   "id": "botinventory-carpet",
   "version": "${version}",
   "name": "BotInventory-Carpet",
-  "description": "A Carpet addon mod for Minecraft",
+  "description": "View and edit Carpet bot inventories and ender chests, including optional real and offline player access.",
   "authors": [
     "froyln"
   ],
@@ -11,7 +11,7 @@
   "icon": "assets/botinventory-carpet/icon.png",
   "environment": "*",
   "depends": {
-    "fabricloader": ">=0.15.0",
+    "fabricloader": ">=0.19.5",
     "minecraft": "~26.2",
     "java": ">=25",
     "carpet": "*"
@@ -23,5 +23,10 @@
   },
   "mixins": [
     "botinventory-carpet.mixins.json"
-  ]
+  ],
+  "contact": {
+    "homepage": "https://github.com/CodeW4VE/BotInventory-Carpet",
+    "sources": "https://github.com/CodeW4VE/BotInventory-Carpet",
+    "issues": "https://github.com/CodeW4VE/BotInventory-Carpet/issues"
+  }
 }

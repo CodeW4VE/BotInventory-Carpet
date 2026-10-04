@@ -1,89 +1,63 @@
-<div align="center">
-
 # BotInventory Carpet
 
-**Fabric Carpet addon that lets players view and manage fake player inventories and ender chests via right‑click or commands.**
-
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11-62B47D?logo=minecraft&logoColor=white)](https://www.minecraft.net/)
-[![Fabric](https://img.shields.io/badge/Fabric%20Loader-0.18.6%2B-87CEEB?logo=fabric&logoColor=white)](https://fabricmc.net/)
-[![Java](https://img.shields.io/badge/Java-21%2B-ED8B00?logo=java&logoColor=white)](https://www.java.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-</div>
-
----
-
-## What is it?
-
-A Carpet extension that allows server operators and players to view and interact with fake player (bot) inventories. Right‑click a fake player to open their inventory, or use `/player <name> view inventory|enderchest`. Everything is gated by three Carpet rules.
-
-## Features
-
-- **Right‑click to open**: Right‑click any fake player (spawned with carpet's `/player`) to instantly open their inventory — works only on fake players, never on real players.
-- **Command access**: `/player <name> view inventory` and `/player <name> view enderchest` for on‑demand access.
-
-## Requirements
-
-- [Java](https://www.java.com/) 21 or higher
-- [Minecraft](https://www.minecraft.net/) 1.21.11 server with Fabric loader
-- [Fabric Loader](https://fabricmc.net/) 0.18.6 or higher
-- [Fabric Carpet](https://github.com/gnembon/fabric-carpet) 1.21.11-1.4.194 or compatible
+View and edit Carpet bot inventories and ender chests by command or right click, with optional access to real and offline players.
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/froyln/BotInventory-carpet.git
-   cd BotInventory-carpet
-   ```
+Download the jar matching your Minecraft version from [GitHub Releases](https://github.com/CodeW4VE/BotInventory-Carpet/releases) or [Modrinth](https://modrinth.com/mod/botinventory-carpet-w4ve).
 
-2. Build the mod:
-   ```bash
-   ./gradlew build
-   ```
+| Minecraft | Java | Fabric Loader | Carpet |
+| --- | --- | --- | --- |
+| 26.2 | 25 | 0.19.5 or newer | 26.2 |
+| 26.3 | 25 | 0.19.5 or newer | 26.3 |
 
-3. Copy the generated `.jar` file from `build/libs/` to your server's `mods` folder:
-   ```bash
-   cp build/libs/botinventory-carpet-*.jar /path/to/server/mods/
-   ```
+Install the jar and [Fabric Carpet](https://modrinth.com/mod/carpet) on the server. Clients need no extra mod. [sgui](https://github.com/Patbox/sgui) is bundled.
+
+## Features
+
+- Right click a fake player to manage its inventory.
+- `/player <name> view inventory` and `/player <name> view enderchest`.
+- Inventory access includes the 36 main slots, four armor slots and offhand.
+- Optionally edit real players and saved inventories while players are offline.
+- Offline edits save as they change and preserve position, dimension, health and other player data.
+- A second viewer is refused while an offline inventory is open. Login invalidates an offline session; logout closes views of the online inventory.
+- Changed data on disk invalidates a stale session instead of overwriting it.
+
+Version 1.0.1 fixes offline serialization: player data is saved with Minecraft's player-specific serialization method, preserving edited items across repeated saves.
 
 ## Configuration
 
-All configuration is done via Carpet rules. Run `/carpet setDefault <rule> <value>` or per‑world with `/carpet <rule> <value>`.
+Use `/carpet <rule> <value>` for the current session or `/carpet setDefault <rule> <value>` to retain the rule across restarts.
 
-| Rule | Default | Description |
-|---|---|---|
-| `viewFakePlayerInventoryRightClick` | `false` | Allow right‑click on fake players to open inventory |
-| `viewPlayerInventoryCommand` | `false` | Allow `/player <name> view inventory` |
-| `viewPlayerEnderchestCommand` | `false` | Allow `/player <name> view enderchest` |
+| Rule | Default | Access controlled |
+| --- | --- | --- |
+| `viewFakePlayerInventoryRightClick` | `false` | Right click on fake players |
+| `viewPlayerInventoryCommand` | `false` | Inventory command |
+| `viewPlayerEnderchestCommand` | `false` | Ender chest command |
+| `viewOfflinePlayerInventory` | `false` | Saved inventories of offline players |
+| `viewRealPlayerInventory` | `true` | Real players instead of only Carpet bots |
 
-**Permission values**: `true` (everyone), `false` (nobody), `ops` (permission level 2+), or `0`–`4` (numeric threshold).
+Values: `true` for everyone, `false` to disable, `ops` for operator level 2 or higher, or a level from `0` to `4`. Offline and real player access also require the relevant inventory or ender chest command rule.
 
-Example:
 ```
-/carpet viewFakePlayerInventoryRightClick ops
-/carpet viewPlayerInventoryCommand true
-```
-
-## Dependencies
-
-- [Fabric Loader](https://fabricmc.net/)
-- [Fabric Carpet](https://github.com/gnembon/fabric-carpet)
-- [sgui](https://github.com/Patbox/sgui) (bundled — no separate download needed)
-
-## Building from Source
-
-Requires:
-- [Gradle](https://gradle.org/) 8.x or higher (automatically downloaded via gradlew)
-- Java 21 or higher
-
-Build command:
-```bash
-./gradlew clean build
+/carpet setDefault viewFakePlayerInventoryRightClick ops
+/carpet setDefault viewPlayerInventoryCommand ops
+/carpet setDefault viewPlayerEnderchestCommand ops
+/carpet setDefault viewOfflinePlayerInventory ops
 ```
 
-Generated artifact: `build/libs/botinventory-carpet-*.jar`
+When updating, stop the server, replace the matching jar and keep the same world, player data and Carpet configuration.
+
+## Building
+
+Requires JDK 25. The wrapper downloads Gradle automatically.
+
+```
+python3 tools/multiversion.py
+```
+
+Both supported jars are written to `build/multiversion/`. Tagged releases publish the jars to GitHub and Modrinth.
 
 ## License
 
-[MIT](LICENSE) © froyln
+[MIT](LICENSE) © froyln.

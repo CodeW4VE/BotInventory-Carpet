@@ -98,7 +98,7 @@ public final class OfflineInventoryAccess {
 
     private static CompoundTag extractEditableKeys(MinecraftServer server, ServerPlayer ghost) {
         TagValueOutput editedView = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, server.registryAccess());
-        ghost.save(editedView);
+        ghost.saveWithoutId(editedView);
         CompoundTag edited = editedView.buildResult();
         CompoundTag snapshot = new CompoundTag();
         for (String key : EDITABLE_KEYS) {

@@ -4,6 +4,8 @@ A Minecraft Fabric mod — Carpet addon that lets server players view fake playe
 
 ## Build
 
+The source tree targets 26.2. `python3 tools/multiversion.py` builds separate 26.2 and 26.3 jars under `build/multiversion/`. The 26.3 build uses Fabric Loader 0.19.5, Carpet 26.3+v260915, sgui 2.2.1+26.3 and Gradle 9.6.0. Each jar declares its Minecraft version explicitly. Both builds use Java 25 and include the MIT license.
+
 ```bash
 ./gradlew build
 ```
@@ -152,3 +154,5 @@ Inventory and ender chest slots use vanilla `Slot` with redirect, meaning the vi
 - Trivial change (typo, formatting, comment) → no doc update, no commit needed unless user ask.
 - Do not add unnecessary comments to the code. Each comment costs tokens with no return; only write a comment when it explains something non-obvious that the code itself can't convey. Keep it to 1-3 lines — never a multi-paragraph essay. If a fix needs a longer story, put it in the commit message, not the code.
 - Never add AI/assistant/session attribution to commit messages — no "Co-Authored-By", no session links, no tool names. Commit messages describe the change only.
+
+Player snapshots use `saveWithoutId`, matching Minecraft player storage. `save` skips the player entity type and produces an empty tag. Only Inventory, EnderItems and equipment are merged back into the latest saved data.
